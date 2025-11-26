@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta e Atualização de CNPJ</title>
+    
+    <link rel="stylesheet" href="css/visualizar.css"> 
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="animated-background"></div> 
+    <header class="main-header">
+        <img src="imgs/logoprefeitura.png" alt="Logo do Sistema"> 
+    </header>
+    
+    <div class="container">
+        <h2>Consulta e Atualização de Dados do CNPJ</h2>
+
+        <div class="buscar-cnpj">
+            <label for="cnpj">Digite o CNPJ</label>
+            <input type="text" id="cnpj" placeholder="00.000.000/0000-00" class="form-control">
+            <button id="buscar" class="btn btn-primary">Buscar Dados</button>
+        </div>
+
+        <form id="dadosForm" style="display:none;">
+            
+            <div class="empresa">
+                <h3>📄 Dados da Empresa</h3>
+                <label>CNPJ</label>
+                <input type="text" id="cnpjEmpresa" readonly class="form-control"> 
+
+                <label>Razão Social</label>
+                <input type="text" id="razaoSocial" class="form-control">
+            </div>
+
+            <div class="endereco">
+                <h3>🏢 Endereço</h3>
+                <label>Endereço Completo</label>
+                <input type="text" id="endereco" class="form-control">
+            </div>
+
+            <div class="contatos">
+                <h3>📞 Contatos</h3>
+                <label>Telefone</label>
+                <input type="text" id="telefone" class="form-control">
+
+                <label>Email</label>
+                <input type="email" id="email" class="form-control">
+            </div>
+
+            <div class="socios">
+                <h3>👥 Sócios</h3>
+                <div id="sociosContainer"></div> 
+            </div>
+
+            <div class="contador">
+                <h3>🧾 Contador</h3>
+                <label>Nome</label>
+                <input type="text" id="contadorNome" class="form-control">
+
+                <label>CPF</label>
+                <input type="text" id="contadorCpf" class="form-control">
+
+                <label>CRC</label>
+                <input type="text" id="contadorCrc" class="form-control">
+
+                <label>Telefone</label>
+                <input type="text" id="contadorTelefone" class="form-control">
+
+                <label>Email</label>
+                <input type="email" id="contadorEmail" class="form-control">
+            </div>
+
+            <div class="acoes">
+                <button type="button" id="importarExcel" class="btn btn-secondary">📥 Importar do Excel</button>
+                <input type="file" id="inputExcel" accept=".xlsx, .xls" style="display:none;">
+                <button type="button" id="exportarExcel" class="btn btn-success">📤 Exportar para Excel</button>
+                <button type="submit" class="btn btn-primary">💾 Salvar Atualizações</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // --- Funções de Máscara (RegEx) ---
+        function maskCnpj(value) {
+            let masked = value.replace(/\D/g, "");
+            masked = masked.replace(/^(\d{2})(\d)/, "$1.$2");
+            masked = masked.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+            masked = masked.replace(/\.(\d{3})(\d)/, ".$1/$2");
+            masked = masked.replace(/(\d{4})(\d)/, "$1-$2");
+            return masked.substring(0, 18);
+        }
+
+        function maskCpf(value) {
+            let masked = value.replace(/\D/g, "").substring(0, 11);
+            masked = masked.replace(/^(\d{3})(\d)/, "$1.$2");
+            masked = masked.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+            masked = masked.replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+            return masked;
+        }
+
+        function maskPhone(value) {
+            let masked = value.replace(/\D/g, "").substring(0, 11);
+            if (masked.length > 10) { 
+                masked = masked.replace(/^(\d\d)(\d{5})(\d{4}).*/, '($1) $2-$3');
+            } else if (masked.length > 6) {
+                masked = masked.replace(/^(\d\d)(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+            } else if (masked.length > 2) {
+                masked = masked.replace(/^(\d\d)(\d+)/, '($1) $2');
+            } else {
+                masked = masked.replace(/^(\d*)/, '($1');
+            }
+            return masked;
+        }
+
+        function applyMasksToSelector(selector, maskFunction) {
+            document.querySelectorAll(selector).forEach(input => {
+                input.removeEventListener('input', input.maskListener); 
+                input.maskListener = (e) => {
+                    e.target.value = maskFunction(e.target.value);
+                };
+                input.addEventListener('input', input.maskListener);
+            });
+        }
+
+        /**
+         * FUNÇÃO DE PROCESSAMENTO: Responsável por preencher o formulário e aplicar máscaras dinâmicas
+         */
+        function processarDados(dados) {
+            // EXIBE O FORMULÁRIO DE ATUALIZAÇÃO DE DADOS
+            form.style.display = 'block'; 
+
+            document.getElementById('cnpjEmpresa').value = maskCnpj(dados.cnpj);
+            document.getElementById('razaoSocial').value = dados.nome;
+            document.getElementById('endereco').value = `${dados.logradouro}, ${dados.numero} - ${dados.bairro}, ${dados.municipio}/${dados.uf}`;
+            document.getElementById('telefone').value = dados.telefone ? maskPhone(dados.telefone) : '';
+            document.getElementById('email').value = dados.email;
+
+            const sociosContainer = document.getElementById('sociosContainer');
+            sociosContainer.innerHTML = "";
+            
+            dados.qsa?.forEach((socio) => {
+                sociosContainer.innerHTML += `
+                    <div class="socio">
+                        <label>Nome</label>
+                        <input type="text" class="form-control socio-nome" value="${socio.nome || ''}">
+                        <label>CPF</label>
+                        <input type="text" class="form-control socio-cpf">
+                        <label>Email</label>
+                        <input type="email" class="form-control socio-email">
+                        <label>Telefone</label>
+                        <input type="text" class="form-control socio-telefone">
+                    </div>
+                `;
+            });
+            
+            // Aplica máscaras nos campos dinâmicos (Sócios)
+            applyMasksToSelector('.socio-cpf', maskCpf);
+            applyMasksToSelector('.socio-telefone', maskPhone);
+        }
+
+        // --- Variáveis e Eventos ---
+        const buscarBtn = document.getElementById('buscar');
+        const form = document.getElementById('dadosForm');
+        const inputExcel = document.getElementById('inputExcel');
+        const cnpjBusca = document.getElementById('cnpj');
+
+        // Aplica a máscara no campo de busca de CNPJ
+        applyMasksToSelector('#cnpj', maskCnpj); 
+        
+        // Aplica as máscaras nos campos estáticos após o DOM carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            applyMasksToSelector('#contadorCpf', maskCpf);
+            applyMasksToSelector('#telefone', maskPhone);
+            applyMasksToSelector('#contadorTelefone', maskPhone);
+            applyMasksToSelector('#cnpjEmpresa', maskCnpj); 
+        });
+
+        // === Buscar dados da API ou MOCK ===
+        buscarBtn.addEventListener('click', async () => {
+            const cnpj = cnpjBusca.value.replace(/\D/g, ''); 
+            
+            if (cnpj.length !== 14) {
+                alert("CNPJ inválido. Digite 14 números.");
+                return;
+            }
+
+            try {
+                // Tenta a busca real
+                const resposta = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cnpj}`);
+                const dados = await resposta.json();
+
+                if (dados.status === "ERROR" || dados.situacao === 'BAIXADA') {
+                    throw new Error(dados.message || "CNPJ não encontrado ou está baixado.");
+                }
+                
+                processarDados(dados);
+
+            } catch (erro) {
+                // SE FALHAR (ERRO DE CORS OU API), USA DADOS DE MOCK
+                console.warn(`Falha na busca real (${erro.message}), usando dados de desenvolvimento.`);
+                
+                const dadosMock = {
+                    cnpj: cnpj,
+                    nome: "EMPRESA DE TESTE - DADOS DE MOCK",
+                    logradouro: "RUA DE TESTE",
+                    numero: "321",
+                    bairro: "MOCK CENTER",
+                    municipio: "MOCKVILLE",
+                    uf: "RJ",
+                    telefone: "21987654321",
+                    email: "mock@empresa.com.br",
+                    qsa: [
+                        { nome: "Fulano Sócio"},
+                        { nome: "Ciclano Sócio"}
+                    ]
+                };
+                
+                // Exibe o formulário com dados mockados
+                processarDados(dadosMock);
+                alert("AVISO: Busca real falhou. Exibindo dados de MOCK.");
+            }
+        });
+
+        // === Exportar para Excel ===
+        document.getElementById('exportarExcel').addEventListener('click', () => {
+            const dados = {
+                CNPJ: document.getElementById('cnpjEmpresa').value.replace(/\D/g, ''),
+                RazaoSocial: document.getElementById('razaoSocial').value,
+                Endereco: document.getElementById('endereco').value,
+                Telefone: document.getElementById('telefone').value.replace(/\D/g, ''),
+                Email: document.getElementById('email').value,
+                Contador_Nome: document.getElementById('contadorNome').value,
+                Contador_CPF: document.getElementById('contadorCpf').value.replace(/\D/g, ''),
+                Contador_CRC: document.getElementById('contadorCrc').value,
+                Contador_Telefone: document.getElementById('contadorTelefone').value.replace(/\D/g, ''),
+                Contador_Email: document.getElementById('contadorEmail').value,
+            };
+
+            const ws = XLSX.utils.json_to_sheet([dados]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Empresa");
+            XLSX.writeFile(wb, `dados_cnpj_${dados.CNPJ}.xlsx`);
+        });
+
+        // === Importar do Excel ===
+        document.getElementById('importarExcel').addEventListener('click', () => inputExcel.click());
+
+        inputExcel.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet)[0];
+
+                document.getElementById('cnpjEmpresa').value = json.CNPJ ? maskCnpj(String(json.CNPJ)) : '';
+                document.getElementById('razaoSocial').value = json.RazaoSocial || '';
+                document.getElementById('endereco').value = json.Endereco || '';
+                document.getElementById('telefone').value = json.Telefone ? maskPhone(String(json.Telefone)) : '';
+                document.getElementById('email').value = json.Email || '';
+                document.getElementById('contadorNome').value = json.Contador_Nome || '';
+                document.getElementById('contadorCpf').value = json.Contador_CPF ? maskCpf(String(json.Contador_CPF)) : '';
+                document.getElementById('contadorCrc').value = json.Contador_CRC || '';
+                document.getElementById('contadorTelefone').value = json.Contador_Telefone ? maskPhone(String(json.Contador_Telefone)) : '';
+                document.getElementById('contadorEmail').value = json.Contador_Email || '';
+
+                form.style.display = 'block';
+                
+                // Garante que os sócios dinâmicos recebam máscaras se estiverem presentes no Excel
+                applyMasksToSelector('.socio-cpf', maskCpf);
+                applyMasksToSelector('.socio-telefone', maskPhone);
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        // === Simular envio ===
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert("✅ Dados atualizados com sucesso! (simulado)");
+        });
+    </script>
+</body>
+</html>

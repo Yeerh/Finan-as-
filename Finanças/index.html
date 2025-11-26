@@ -3,42 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css"> 
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap" rel="stylesheet"> 
-
-    <title>Login - Recadastramento de Empresas</title>
+    
+    <link rel="stylesheet" href="css/style.css"> 
+    
+    <title>Buscar CNPJ - Recadastramento</title>
 </head>
 <body>
+    <div class="animated-background"></div> 
+
+    <header class="main-header">
+        <img src="imgs/logoprefeitura.png" alt="Logo do Sistema">
+    </header>
     <div class="login-container">
-        <h2> Sistema de Recadastramento</h2>
-        <form id="loginForm">
+        <h2>Verificação de CNPJ</h2>
+        <form id="cnpjSearchForm">
             <div class="input-group">
-                <label for="email">CNPJ</label>
-                <input type="email" id="email" name="email" placeholder="Digite seu CNPJ" required>
+                <label for="cnpj">CNPJ da Empresa</label>
+                <input 
+                    type="text" 
+                    id="cnpj" 
+                    name="cnpj" 
+                    placeholder="00.000.000/0000-00" 
+                    maxlength="18" 
+                    required
+                >
             </div>
-            <button type="submit">Entrar no Sistema</button>
+            <button type="submit" id="searchButton">
+                Buscar Dados da Empresa
+            </button>
         </form>
+
+        <div id="statusMessage" style="margin-top: 20px;">
+            </div>
+
+        <div id="companyData" style="margin-top: 20px; text-align: left; display: none;">
+            <h3>Dados Encontrados:</h3>
+            <p><strong>Razão Social:</strong> <span id="razaoSocial"></span></p>
+            <p><strong>Situação Cadastral:</strong> <span id="situacao"></span></p>
+            <button id="goToRecadastro" style="margin-top: 20px;">
+                Prosseguir para o Recadastramento
+            </button>
+        </div>
     </div>
 
     <script>
-        // Adicionar lógica de JavaScript aqui.
-        // Por exemplo, capturar o envio do formulário para autenticação.
-        document.getElementById('loginForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Evita o envio padrão do formulário
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        const form = document.getElementById('cnpjSearchForm');
+        const cnpjInput = document.getElementById('cnpj');
+        const searchButton = document.getElementById('searchButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const companyData = document.getElementById('companyData');
+        const razaoSocialSpan = document.getElementById('razaoSocial');
+        const situacaoSpan = document.getElementById('situacao');
+        const goToRecadastroButton = document.getElementById('goToRecadastro');
 
-            console.log('Tentativa de Login:', email, password);
+        // Função para formatar o CNPJ enquanto o usuário digita
+        cnpjInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            value = value.replace(/^(\d{2})(\d)/, '$1.$2'); // 00.000
+            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3'); // 00.000.000
+            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2'); // 00.000.000/0000
+            value = value.replace(/(\d{4})(\d)/, '$1-$2'); // 00.000.000/0000-00
+            e.target.value = value.substring(0, 18);
+        });
+
+        // Simulação da Chamada de API
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault(); 
+
+            // Limpa mensagens e dados anteriores
+            statusMessage.innerHTML = '';
+            companyData.style.display = 'none';
+            searchButton.disabled = true;
+            searchButton.textContent = 'Buscando...';
             
-            // Aqui seria feita a chamada AJAX/Fetch para o seu Backend
-            // Se a autenticação for bem-sucedida:
-            // window.location.href = 'tela2-busca-cnpj.html'; 
-            
-            alert('Funcionalidade de Login será implementada aqui.');
+            // Remove formatação para a chamada da API
+            const rawCnpj = cnpjInput.value.replace(/\D/g, ''); 
+
+            if (rawCnpj.length !== 14) {
+                statusMessage.innerHTML = '<p style="color: red;">⚠️ CNPJ inválido. Digite 14 dígitos.</p>';
+                searchButton.disabled = false;
+                searchButton.textContent = 'Buscar Dados da Empresa';
+                return;
+            }
+
+            try {
+                // Endpoint da API ReceitaWS
+                const apiUrl = `https://receitaws.com.br/v1/cnpj/${rawCnpj}`;
+                statusMessage.innerHTML = '<p style="color: blue;">Aguarde, buscando dados na Receita Federal...</p>';
+
+                const response = await fetch(apiUrl, { mode: 'cors' });
+                const data = await response.json();
+
+                if (data.status === 'ERROR' || data.situacao === 'BAIXADA') {
+                    statusMessage.innerHTML = `<p style="color: red;">❌ Erro: ${data.message || 'CNPJ não encontrado ou está baixado.'}</p>`;
+                } else {
+                    // Dados encontrados com sucesso!
+                    razaoSocialSpan.textContent = data.nome || 'Não Informado';
+                    situacaoSpan.textContent = data.situacao || 'Desconhecida';
+                    
+                    statusMessage.innerHTML = '<p style="color: green;">✅ Sucesso! Dados carregados. Verifique abaixo.</p>';
+                    companyData.style.display = 'block';
+
+                    // Aqui você armazenaria os dados em um objeto global (ou estado do React) para uso na próxima tela
+                    console.log('Dados completos do CNPJ:', data);
+                }
+            } catch (error) {
+                statusMessage.innerHTML = `<p style="color: red;">🛑 Erro de Conexão: Verifique sua rede.</p>`;
+                console.error('Erro na chamada da API:', error);
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = 'Buscar Dados da Empresa';
+            }
+        });
+
+        // Simulação de navegação para a Tela 3
+        goToRecadastroButton.addEventListener('click', function() {
+            // Em um projeto real, você passaria os dados do 'data' para a tela de recadastro
+            alert('Navegando para a Tela 3: Recadastramento...');
+            // Exemplo: window.location.href = 'recadastro.html'; 
         });
     </script>
 </body>

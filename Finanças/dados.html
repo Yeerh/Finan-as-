@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap" rel="stylesheet"> 
+    
+    <link rel="stylesheet" href="css/dados.css"> 
+    
+    <title>Recadastramento de Empresas - Completo</title>
+</head>
+<body>
+    <div class="animated-background"></div> <header class="main-header">
+        <img src="imgs/logoprefeitura.png" alt="Logo do Sistema de Recadastramento">
+    </header>
+    <div class="recadastro-container">
+        <h2>Atualização de Dados Cadastrais</h2>
+        <form id="recadastroForm">
+            
+            <div class="form-section">
+                <h3>1. Dados da Empresa e Contato Principal</h3>
+                <div class="form-row">
+                    <div class="input-group" style="flex: 2;">
+                        <label for="razaoSocial">Razão Social *</label>
+                        <input type="text" id="razaoSocial" name="razaoSocial" readonly required>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label for="cnpj">CNPJ</label>
+                        <input type="text" id="cnpj" name="cnpj" readonly>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="enderecoCompleto">Endereço Completo (Rua, Número, Bairro, Cidade, UF) *</label>
+                    <input type="text" id="enderecoCompleto" name="enderecoCompleto" required placeholder="Preenchido e revisado pelo usuário">
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="emailContato">Email de Contato Principal *</label>
+                        <input type="email" id="emailContato" name="emailContato" required placeholder="contato@empresa.com.br">
+                    </div>
+                    <div class="input-group">
+                        <label for="telefone">Telefone Principal *</label>
+                        <input type="text" id="telefone" name="telefone" required placeholder="(XX) XXXX-XXXX">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>2. Dados dos Sócios Administradores</h3>
+                <div id="sociosContainer">
+                    <div class="sub-section">
+                        <h4>Sócio 1</h4>
+                        <div class="form-row">
+                            <div class="input-group form-group-item">
+                                <label for="socioNome1">Nome *</label>
+                                <input type="text" id="socioNome1" name="socioNome1" required>
+                            </div>
+                            <div class="input-group form-group-item">
+                                <label for="socioCpf1">CPF *</label>
+                                <input type="text" id="socioCpf1" name="socioCpf1" required maxlength="14" placeholder="000.000.000-00">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="input-group form-group-item">
+                                <label for="socioEmail1">E-mail *</label>
+                                <input type="email" id="socioEmail1" name="socioEmail1" required>
+                            </div>
+                            <div class="input-group form-group-item">
+                                <label for="socioTelefone1">Telefone *</label>
+                                <input type="text" id="socioTelefone1" name="socioTelefone1" required placeholder="(XX) XXXX-XXXX">
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                <button type="button" id="addSocioButton" style="width: auto; padding: 8px 15px; font-size: 14px;">+ Adicionar Outro Sócio</button>
+            </div>
+
+            <div class="form-section">
+                <h3>3. Dados do Contador Responsável</h3>
+                <div class="form-row">
+                    <div class="input-group form-group-item">
+                        <label for="contNome">Nome *</label>
+                        <input type="text" id="contNome" name="contNome" required>
+                    </div>
+                    <div class="input-group form-group-item">
+                        <label for="contCpf">CPF *</label>
+                        <input type="text" id="contCpf" name="contCpf" required maxlength="14" placeholder="000.000.000-00">
+                    </div>
+                    <div class="input-group form-group-item">
+                        <label for="contCrc">CRC *</label>
+                        <input type="text" id="contCrc" name="contCrc" required placeholder="Ex: RJ-000000/O">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="input-group form-group-item">
+                        <label for="contEmail">E-mail *</label>
+                        <input type="email" id="contEmail" name="contEmail" required>
+                    </div>
+                    <div class="input-group form-group-item">
+                        <label for="contTelefone">Telefone *</label>
+                        <input type="text" id="contTelefone" name="contTelefone" required placeholder="(XX) XXXX-XXXX">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                Salvar e Concluir Recadastramento
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('recadastroForm');
+        
+        // --- Função de Simulação de Pré-Preenchimento (Dados da API) ---
+        function preencherDados(dadosAPI) {
+            // Campos pré-preenchidos e bloqueados (Razão Social, CNPJ)
+            document.getElementById('cnpj').value = dadosAPI.cnpj || '';
+            document.getElementById('razaoSocial').value = dadosAPI.nome || '';
+            
+            // Campos pré-preenchidos para revisão (Endereço e Contatos)
+            const endereco = `${dadosAPI.logradouro || ''}, ${dadosAPI.numero || ''} - ${dadosAPI.bairro || ''}, ${dadosAPI.municipio || ''}/${dadosAPI.uf || ''} - CEP: ${dadosAPI.cep || ''}`;
+            document.getElementById('enderecoCompleto').value = endereco.trim();
+
+            document.getElementById('emailContato').value = dadosAPI.email || '';
+            document.getElementById('telefone').value = dadosAPI.telefone || '';
+
+            // Lógica para pré-preencher sócios (Se a API retornar dados de QSA - Quadro de Sócios e Administradores)
+            if (dadosAPI.qsa && dadosAPI.qsa.length > 0) {
+                // Exemplo: Preenche o primeiro sócio
+                document.getElementById('socioNome1').value = dadosAPI.qsa[0].nome || '';
+                // O restante dos dados (CPF, telefone, e-mail) geralmente precisam ser informados pelo usuário, pois a ReceitaWS não os fornece.
+            }
+        }
+
+        // Simulação de Dados Recebidos (Você passaria os dados da API aqui)
+        const mockData = {
+            cnpj: '00.000.000/0000-00',
+            nome: 'Empresa Teste S/A',
+            email: 'contato_antigo@teste.com',
+            telefone: '(11) 98765-4321',
+            logradouro: 'Rua das Flores',
+            numero: '123',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01000-000',
+            qsa: [{ nome: 'João da Silva' }]
+        };
+        preencherDados(mockData);
+
+        // --- Lógica de Adicionar Sócio Dinamicamente (Simples) ---
+        let socioCount = 1;
+        document.getElementById('addSocioButton').addEventListener('click', function() {
+            socioCount++;
+            alert(`Funcionalidade em desenvolvimento: Adicionando Sócio ${socioCount}. Em um projeto real, um novo formulário seria gerado dinamicamente aqui.`);
+            // Em React ou JS moderno, você clonaria e inseriria o bloco de sócio aqui, atualizando os IDs e nomes.
+        });
+
+
+        // --- Função de Submissão (Salvamento) ---
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); 
+            
+            // 1. Coleta todos os dados do formulário
+            const formData = {
+                // Dados da Empresa
+                cnpj: document.getElementById('cnpj').value,
+                razaoSocial: document.getElementById('razaoSocial').value,
+                enderecoCompleto: document.getElementById('enderecoCompleto').value,
+                emailContato: document.getElementById('emailContato').value,
+                telefone: document.getElementById('telefone').value,
+
+                // Dados do Contador
+                contador: {
+                    nome: document.getElementById('contNome').value,
+                    cpf: document.getElementById('contCpf').value,
+                    crc: document.getElementById('contCrc').value,
+                    email: document.getElementById('contEmail').value,
+                    telefone: document.getElementById('contTelefone').value,
+                },
+
+                // Dados dos Sócios (Exemplo para Sócio 1)
+                socios: [{
+                    nome: document.getElementById('socioNome1').value,
+                    cpf: document.getElementById('socioCpf1').value,
+                    email: document.getElementById('socioEmail1').value,
+                    telefone: document.getElementById('socioTelefone1').value,
+                }]
+                // Em um projeto real, você faria um loop sobre todos os sócios gerados
+            };
+
+            console.log('Dados Coletados para Salvamento:', formData);
+            
+            // 2. Aqui seria feita a chamada AJAX/Fetch (POST) para o seu Backend:
+            // fetch('/api/recadastrar', { method: 'POST', body: JSON.stringify(formData) })
+            // ...
+
+            alert('Recadastramento Concluído! Dados enviados ao servidor.');
+            // Redirecionar para a Tela 4: Visualização ou Tela de Sucesso
+            // window.location.href = 'visualizacao-exportacao.html'; 
+        });
+    </script>
+</body>
+</html>
